@@ -47,22 +47,27 @@ python << endPython
 
 searchTerm = " ".join(vim.eval("a:000"))
 
-runner = note.Runner()
-runner.command = "search"
-old_stdout = sys.stdout
-sys.stdout = mystdout = StringIO.StringIO()
-runner.search([searchTerm], color=False)
-sys.stdout = old_stdout
+if not searchTerm:
+   vim.command("echo 'No Search Term'")
+else:
+   runner = note.Runner()
+   runner.command = "search"
+   old_stdout = sys.stdout
+   sys.stdout = mystdout = StringIO.StringIO()
+   runner.search([searchTerm], color=False)
+   sys.stdout = old_stdout
 
-f = os.path.expanduser("~/.noteSearch.TMP")
-with open(f, 'w') as fd:
-   fd.write(mystdout.getvalue())
+   f = os.path.expanduser("~/.noteSearch.TMP")
+   with open(f, 'w') as fd:
+      fd.write(mystdout.getvalue())
 
-vim.command('augroup NoteSearch')
-vim.command('au BufRead .noteSearch.TMP syn match Error "^\d\+\s"')
-vim.command('au BufRead .noteSearch.TMP syn match VarId "\u\l\l,\s\u\l\l\ \d\{1,2}:"')
-vim.command('augroup END')
-vim.command('autocmd! NoteSearch')
+   vim.command('augroup NoteSearch')
+   vim.command('au BufRead .noteSearch.TMP syn match Error "^\d\+\s"')
+   vim.command('au BufRead .noteSearch.TMP syn match VarId "\u\l\l,\s\u\l\l\ \d\{1,2}:"')
+   vim.command('augroup END')
+   vim.command('rightbelow split {0}'.format(f))
+   vim.command('setlocal buftype=nowrite')
+   vim.command('autocmd! NoteSearch')
 
 endPython
 endfunction
