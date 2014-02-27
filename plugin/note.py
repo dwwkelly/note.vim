@@ -449,7 +449,6 @@ class Note(NoteBaseClass):
       origTags = ','.join(origNote['tags'])
 
       editText = (self.noteEditTemplate.format(origNotetext, origTags)).encode('utf-8')
-      self.tmpNote = os.path.join(self.homeDir, '.note.TMP')
       with open(self.tmpNote, 'w') as fd:
          fd.write(editText)
 
@@ -546,7 +545,6 @@ class Place(NoteBaseClass):
       origTags = ','.join(origNote['tags'])
 
       editText = (self.noteEditTemplate.format(origPlaceText, origNoteText, origAddressText, origTags)).encode('utf-8')
-      self.tmpNote = os.path.join(self.homeDir, '.note.TMP')
       with open(self.tmpNote, 'w') as fd:
          fd.write(editText)
 
@@ -586,7 +584,7 @@ class Place(NoteBaseClass):
       if color:
          print u"{0}{1} {2}{3}{4}:{5}\n{6}\n{7}".format(FBLE, int(ID),  FRED, RS, noteDate, placeText, noteText, addressText)
       else:
-         print u"{0} {1}: {2}\n{3}\n{4}".format(int(ID), noteDate, placeText, noteText, addressText)
+         print u"{0} {1}: {2}\n{3}\n{4}".format(int(ID), noteDate, placeText, noteText, addressText).encode('utf-8')
 
 
 class ToDo(NoteBaseClass):
@@ -599,7 +597,6 @@ class ToDo(NoteBaseClass):
 
    def edit(self, ID):
       ID = int(ID[0])
-      self.tmpNote = os.path.join(self.homeDir, '.todo.TMP')
       todo = self.db.getItem(ID)
       dateStr = time.strftime('%m %d %y', time.localtime(todo['date']))
       with open(self.tmpNote, 'w') as fd:
@@ -610,7 +607,6 @@ class ToDo(NoteBaseClass):
       return
 
    def new(self, dummy=None):
-      self.tmpNote = os.path.join(self.homeDir, '.todo.TMP')
       with open(self.tmpNote, 'w') as fd:
          fd.write(self.todoTemplate)
       self.startEditor(3)
@@ -676,7 +672,7 @@ class ToDo(NoteBaseClass):
       if color:
          print u"{5}{6} {4}{2}{0}:{3} {1}".format(noteDate, resultsStr, FRED, RS, HC, FBLE, int(ID))
       else:
-         print u"{0} {1}:{2}".format(int(ID), noteDate, resultsStr)
+         print u"{0} {1}:{2}".format(int(ID), noteDate, resultsStr).encode('utf-8')
 
 
 class Contact(NoteBaseClass):
@@ -753,7 +749,7 @@ class Contact(NoteBaseClass):
       if color:
          print u"{5}{6} {4}{2}{0}:{3} {1}".format(noteDate, resultsStr, FRED, RS, HC, FBLE, int(ID))
       else:
-         print u"{0} {1}: {2}".format(int(ID), noteDate, resultsStr)
+         print u"{0} {1}: {2}".format(int(ID), noteDate, resultsStr).encode('utf-8')
 
 
 class Runner(object):

@@ -17,12 +17,18 @@ function! NoteNewFunc()
    execute "normal! ggVGd"
    execute "normal! i".template
    execute "normal! 3G"
-   au BufUnload <buffer> call NoteAddNote()
+   augroup Note
+      autocmd!
+      autocmd BufUnload <buffer> call NoteAddNote()
+   augroup END  " ends au group NoteAdd
    startinsert
 
 endfunction
 
 function! NoteAddNote()
+augroup Note
+   autocmd!
+augroup END
 python << endPython
 
 db = note.mongoDB("note")
@@ -37,6 +43,46 @@ endPython
 endfunction
 
 command! NoteNew call NoteNewFunc()
+
+"""""""""""""""""""""""""""""""""""""""""""
+"" New Todo
+"""""""""""""""""""""""""""""""""""""""""""
+
+function! TodoNewFunc()
+
+   let template = "TODO\n\n\n\nDONE\n\n\n\nDATE - MM DD YY\n\n\n"
+
+   split
+   edit ~/.note.TMP
+   execute "normal! ggVGd"
+   execute "normal! i".template
+   execute "normal! 3G"
+   augroup Note
+      autocmd!
+      autocmd BufUnload <buffer> call NoteAddToDo()
+   augroup END  " ends NoteAddTodo group
+   startinsert
+
+endfunction
+
+function! NoteAddToDo()
+augroup Note
+   autocmd!
+augroup END
+python << endPython
+
+db = note.mongoDB("note")
+
+todo = note.ToDo(db)
+todo.processTodo()
+
+if todo.todoText:
+   db.addItem("todos", {"todoText": todo.todoText, "done": todo.done, "date": todo.date})
+
+endPython
+endfunction
+
+command! NoteToDo call TodoNewFunc()
 
 """""""""""""""""""""""""""""""""""""""""""
 "" Search
