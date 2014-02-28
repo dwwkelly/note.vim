@@ -147,8 +147,6 @@ class mongoDB(dbBaseClass):
          itemContents["ID"] = itemID
          collection.update({"_id": _id}, itemContents)
 
-      return
-
    def getNewID(self):
       """
          Get a new ID by either incrementing the currentMax ID or using an unusedID
@@ -390,7 +388,6 @@ class NoteBaseClass(object):
          pass
 
       self.db.deleteItem(ID)
-      return
 
    def startEditor(self, startingLine=1):
       if self.editor == "/usr/bin/vim" or self.editor == '/usr/local/bin/vim':
@@ -404,6 +401,17 @@ class NoteBaseClass(object):
       else:
          subprocess.call([self.editor, self.tmpNote])
 
+   def scrubID(self, ID):
+
+      if type(ID) == list:
+         return int(ID)
+      elif type(ID) == str:
+         return int(ID)
+      elif type(ID) == int:
+         return ID
+      else:
+         return None
+
 
 class Note(NoteBaseClass):
    def __init__(self, db):
@@ -414,6 +422,32 @@ class Note(NoteBaseClass):
       self.noteType = u"notes"
       self.noteTemplate = u"NOTE\n\n\n\nTAGS\n\n\n"
       self.noteEditTemplate = u"NOTE\n\n{0}\n\nTAGS\n\n{1}\n"
+
+   def new(self, dummy=None):
+      """
+
+      """
+      self.makeTmpFile()
+      self.addByEditor()
+
+   def edit(self, ID):
+      """
+
+      """
+      ID = self.scrubID(ID)
+      self.makeTmpFile(ID)
+      self.addByEditor(ID)
+
+   def printItem(self, ID, color=True):
+      result = self.db.getItem(ID)
+      noteText = result['noteText']
+      timestamps = result['timestamps']
+      timestamp = time.localtime(max(timestamps))
+      noteDate = time.strftime("%a, %b %d", timestamp)
+      if color:
+         print u"{5}{6} {4}{2}{0}:{3} {1}".format(noteDate, noteText, FRED, RS, HC, FBLE, int(ID))
+      else:
+         print u"{2} {0}: {1}".format(noteDate, noteText, int(ID)).encode('utf-8')
 
    def processNote(self):
 
@@ -439,48 +473,34 @@ class Note(NoteBaseClass):
       tags = map(lambda x: x.lstrip(), tags)
       self.tags = tags
 
-   def edit(self, ID):
-      """
+   def makeTmpFile(self, ID=None):
+      """@todo: Makes the temporary file for a new note or a note that is to be edited.
+
+      :ID: The note ID, if given populates file with note contents, otherwise use template
+      :returns: Nothing
 
       """
-      ID = int(ID[0])
-      origNote = self.db.getItem(ID)
-      origNotetext = origNote['noteText']
-      origTags = ','.join(origNote['tags'])
 
-      editText = (self.noteEditTemplate.format(origNotetext, origTags)).encode('utf-8')
-      with open(self.tmpNote, 'w') as fd:
-         fd.write(editText)
+      fileText = ""
+      if ID:
+         ID = self.scrubID(ID)
+         origNote = self.db.getItem(ID)
+         origNotetext = origNote['noteText']
+         origTags = ','.join(origNote['tags'])
 
-      self.startEditor(3)
-      self.processNote()
-      self.db.addItem(self.noteType, {"noteText": self.noteText, "tags": self.tags}, ID)
-
-   def new(self, dummy=None):
-      """
-
-      """
+         fileText = (self.noteEditTemplate.format(origNotetext, origTags)).encode('utf-8')
+      else:
+         fileText = self.template
 
       with open(self.tmpNote, 'w') as fd:
-         fd.write(self.noteTemplate)
+         fd.write(fileText)
+
+   def addByEditor(self, ID=None):
       self.startEditor(3)
       self.processNote()
 
       if self.noteText:
          self.db.addItem("notes", {"noteText": self.noteText, "tags": self.tags})
-
-      return
-
-   def printItem(self, ID, color=True):
-      result = self.db.getItem(ID)
-      noteText = result['noteText']
-      timestamps = result['timestamps']
-      timestamp = time.localtime(max(timestamps))
-      noteDate = time.strftime("%a, %b %d", timestamp)
-      if color:
-         print u"{5}{6} {4}{2}{0}:{3} {1}".format(noteDate, noteText, FRED, RS, HC, FBLE, int(ID))
-      else:
-         print u"{2} {0}: {1}".format(noteDate, noteText, int(ID)).encode('utf-8')
 
 
 class Place(NoteBaseClass):
@@ -537,7 +557,7 @@ class Place(NoteBaseClass):
       """
 
       """
-      ID = int(ID[0])
+      ID = self.scrubID(ID)
       origNote = self.db.getItem(ID)
       origNoteText = origNote['noteText']
       origAddressText = origNote['addressText']
@@ -548,12 +568,7 @@ class Place(NoteBaseClass):
       with open(self.tmpNote, 'w') as fd:
          fd.write(editText)
 
-      self.startEditor(3)
-      self.processPlace()
-      self.db.addItem(self.noteType, {"noteText": self.noteText,
-                                      "placeText": self.placeText,
-                                      "addressText": self.addressText,
-                                      "tags": self.tags}, ID)
+      self.addByEditor(ID)
 
    def new(self, dummy=None):
       """
@@ -562,18 +577,11 @@ class Place(NoteBaseClass):
 
       with open(self.tmpNote, 'w') as fd:
          fd.write(self.noteTemplate)
-      self.startEditor(3)
-      self.processPlace()
 
-      if self.noteText:
-         self.db.addItem(self.noteType, {"noteText": self.noteText,
-                                         "placeText": self.placeText,
-                                         "addressText": self.addressText,
-                                         "tags": self.tags})
-
-      return
+      self.addByEditor()
 
    def printItem(self, ID, color):
+      ID = self.scrubID(ID)
       result = self.db.getItem(ID)
       noteText = result['noteText']
       addressText = result['addressText']
@@ -586,6 +594,15 @@ class Place(NoteBaseClass):
       else:
          print u"{0} {1}: {2}\n{3}\n{4}".format(int(ID), noteDate, placeText, noteText, addressText).encode('utf-8')
 
+   def addByEditor(self, ID=None):
+
+      self.startEditor(3)
+      self.processPlace()
+      self.db.addItem(self.noteType, {"noteText": self.noteText,
+                                      "placeText": self.placeText,
+                                      "addressText": self.addressText,
+                                      "tags": self.tags}, ID)
+
 
 class ToDo(NoteBaseClass):
 
@@ -596,23 +613,19 @@ class ToDo(NoteBaseClass):
       self.todoEditTemplate = "TODO\n\n{0}\n\nDONE\n\n{1}\n\nDATE - MM DD YY\n\n{2}\n\n"
 
    def edit(self, ID):
-      ID = int(ID[0])
+      ID = self.scrubID(ID)
       todo = self.db.getItem(ID)
       dateStr = time.strftime('%m %d %y', time.localtime(todo['date']))
       with open(self.tmpNote, 'w') as fd:
          fd.write(self.todoEditTemplate.format(todo['todoText'], todo['done'], dateStr))
-      self.startEditor(3)
-      self.processTodo()
-      self.db.addItem(self.noteType, {"todoText": self.todoText, "done": self.done, "date": self.date}, ID)
-      return
+
+      self.addByEditor(ID)
 
    def new(self, dummy=None):
       with open(self.tmpNote, 'w') as fd:
          fd.write(self.todoTemplate)
-      self.startEditor(3)
-      self.processTodo()
-      self.db.addItem(self.noteType, {"todoText": self.todoText, "done": self.done, "date": self.date})
-      return
+
+      self.addByEditor()
 
    def processTodo(self):
       try:
@@ -644,6 +657,14 @@ class ToDo(NoteBaseClass):
       date = lines[lines.index('DATE - MM DD YY') + 15: -1]
       date = date.strip()
       self.date = time.mktime(time.strptime(date, "%m %d %y"))
+
+   def addByEditor(self, ID=None):
+      ID = self.scrubID(ID)
+      self.startEditor(3)
+      self.processTodo()
+      self.db.addItem(self.noteType, {"todoText": self.todoText,
+                                      "done": self.done,
+                                      "date": self.date}, ID)
 
    def showDone(self, dummy=None):
       IDs = self.db.getDone(True)
@@ -683,12 +704,11 @@ class Contact(NoteBaseClass):
       self.contactTemplate = "NAME\n\n\n\nAFFILIATION\n\n\n\nEMAIL\n\n\n\nMOBILE PHONE\n\n\n\nHOME PHONE\n\n\n\nWORK PHONE\n\n\n\nADDRESS\n\n\n"
       self.contactEditTemplate = "NAME\n\n{0}\n\nAFFILIATION\n\n{1}\n\nEMAIL\n\n{2}\n\nMOBILE PHONE\n\n{3}\n\nHOME PHONE\n\n{4}\n\nWORK PHONE\n\n{5}\n\nADDRESS\n\n\n"
       self.keys = ["NAME", "AFFILIATION", "EMAIL", "MOBILE PHONE", "HOME PHONE", "WORK PHONE", "ADDRESS"]
-      self.tmpNote = os.path.join(self.homeDir, '.contact.TMP')
       self.contactInfo = {}
 
    def edit(self, ID):
 
-      ID = int(ID[0])
+      ID = self.scrubID(ID)
       origContact = self.db.getItem(ID)
       self.contactEditTemplate
 
@@ -703,24 +723,20 @@ class Contact(NoteBaseClass):
       with open(self.tmpNote, 'w') as fd:
          fd.write(editText)
 
-      self.startEditor(3)
-      self.processContact()
-      self.db.addItem(self.noteType, self.contactInfo, ID)
-      return
+      self.addByEditor(ID)
 
    def new(self, dummy=None):
       with open(self.tmpNote, 'w') as fd:
          fd.write(self.contactTemplate)
-      self.startEditor(3)
-      self.processContact()
-      self.db.addItem("contacts", self.contactInfo)
+
+      self.addByEditor()
 
    def processContact(self):
       try:
          with open(self.tmpNote) as fd:
             lines = fd.read()
       except IOError:
-         print("Config file doesn't exist, exiting")
+         print("Note file file doesn't exist, exiting")
          sys.exit(-1)
 
       keys = copy.deepcopy(self.keys)
@@ -750,6 +766,11 @@ class Contact(NoteBaseClass):
          print u"{5}{6} {4}{2}{0}:{3} {1}".format(noteDate, resultsStr, FRED, RS, HC, FBLE, int(ID))
       else:
          print u"{0} {1}: {2}".format(int(ID), noteDate, resultsStr).encode('utf-8')
+
+   def addByEditor(self, ID=None):
+      self.startEditor(3)
+      self.processContact()
+      self.db.addItem("contacts", self.contactInfo)
 
 
 class Runner(object):
@@ -862,8 +883,6 @@ class Runner(object):
 
       self.commandArgs = args.command[1:]
 
-      return
-
    def backup(self, dst):
 
       if not dst:
@@ -876,8 +895,6 @@ class Runner(object):
       if dst is "/tmp":
          pwd = os.getcwd()
          shutil.move(os.path.join(dst, self.backupName), os.path.join(pwd, self.backupName))
-
-      return
 
    def encrypt(self, dst):
 
@@ -927,8 +944,6 @@ class Runner(object):
       else:
          self.key = usable_keys[data - 1]
 
-      return
-
    def pushToDropbox(self, backupFile=None):
 
       token = self.config['dropbox']['token']
@@ -965,8 +980,6 @@ class Runner(object):
          itemType = self.db.getItemType(ID)
          self.itemTypes[itemType].printItem(ID)
 
-      return
-
    def thisMonth(self, null=None):
       now = datetime.datetime.now()
       firstOfMonth = datetime.datetime(now.year, now.month, day=1, hour=0, minute=0, second=0)
@@ -981,7 +994,7 @@ class Runner(object):
          self.itemTypes[itemType].printItem(ID)
 
    def info(self, ID):
-      ID = int(ID[0])
+      ID = self.scrubID(ID)
 
       info = self.db.getItem(ID)
 

@@ -8,28 +8,40 @@ python import StringIO
 "" New Note
 """""""""""""""""""""""""""""""""""""""""""
 
-function! NoteNewFunc()
-
-   let template = "NOTE\n\n\n\nTAGS\n\n"
+function! NoteNewFunc(...)
 
    split
-   edit ~/.note.TMP
-   execute "normal! ggVGd"
-   execute "normal! i".template
+
+   if a:0 == 1
+      let ID = a:1
+      call NoteEditNote(ID)
+      edit ~/.note.TMP
+   else
+      let template = "NOTE\n\n\n\nTAGS\n\n"
+      edit ~/.note.TMP
+      execute "normal! ggdG"
+      execute "normal! i".template
+      let ID = 0
+   endif
+
    execute "normal! 3G"
    augroup Note
       autocmd!
-      autocmd BufUnload <buffer> call NoteAddNote()
+      autocmd BufUnload <buffer> call NoteAddNote(ID)
    augroup END  " ends au group NoteAdd
    startinsert
 
 endfunction
 
-function! NoteAddNote()
+function! NoteAddNote(ID)
 augroup Note
    autocmd!
 augroup END
 python << endPython
+
+ID = vim.eval("a:ID")
+if not ID:
+   ID = None
 
 db = note.mongoDB("note")
 
@@ -37,30 +49,47 @@ n = note.Note(db)
 n.processNote()
 
 if n.noteText:
-   db.addItem("notes", {"noteText": n.noteText, "tags": n.tags})
+   db.addItem("notes", {"noteText": n.noteText, "tags": n.tags}, ID)
 
 endPython
 endfunction
 
-command! NoteNew call NoteNewFunc()
+function! NoteEditNote(ID)
+python << endPython
+db = note.mongoDB("note")
+
+n = note.Note(db)
+n.makeTmpFile(vim.eval("a:ID"))
+
+endPython
+endfunction
+
+command! -nargs=? NoteNew call NoteNewFunc(<f-args>)
 
 """""""""""""""""""""""""""""""""""""""""""
 "" New Todo
 """""""""""""""""""""""""""""""""""""""""""
 
-function! TodoNewFunc()
-
-   let template = "TODO\n\n\n\nDONE\n\n\n\nDATE - MM DD YY\n\n\n"
+function! TodoNewFunc(...)
 
    split
-   edit ~/.note.TMP
-   execute "normal! ggVGd"
-   execute "normal! i".template
+   if a:0 == 1
+      let ID = a:1
+      call NoteEditTodo(ID)
+      edit ~/.note.TMP
+   else
+      let template = "TODO\n\n\n\nDONE\n\n\n\nDATE - MM DD YY\n\n\n"
+      execute "normal! ggVGd"
+      execute "normal! i".template
+      edit ~/.note.TMP
+      let ID=0
+   endif
+
    execute "normal! 3G"
    augroup Note
       autocmd!
       autocmd BufUnload <buffer> call NoteAddToDo()
-   augroup END  " ends NoteAddTodo group
+   augroup END  " ends Note group
    startinsert
 
 endfunction
@@ -82,7 +111,100 @@ if todo.todoText:
 endPython
 endfunction
 
-command! NoteToDo call TodoNewFunc()
+function! NoteEditTodo(ID)
+python << endPython
+db = note.mongoDB("note")
+
+t = note.ToDo(db)
+t.makeTmpFile(vim.eval("a:ID"))
+
+endPython
+endfunction
+
+command! -nargs=? NoteToDo call TodoNewFunc(<f-args>)
+
+"""""""""""""""""""""""""""""""""""""""""""
+"" New Contact
+"""""""""""""""""""""""""""""""""""""""""""
+
+function! NoteContactFunc()
+
+   let template = "NAME\n\n\n\nAFFILIATION\n\n\n\nEMAIL\n\n\n\nMOBILE PHONE\n\n\n\nHOME PHONE\n\n\n\nWORK PHONE\n\n\n\nADDRESS\n\n\n"
+
+   split
+   edit ~/.note.TMP
+   execute "normal! ggVGd"
+   execute "normal! i".template
+   execute "normal! 3G"
+   augroup Note
+      autocmd!
+      autocmd BufUnload <buffer> call NoteAddContact()
+   augroup END  " ends au group NoteAdd
+   startinsert
+
+endfunction
+
+function! NoteAddContact()
+augroup Note
+   autocmd!
+augroup END
+python << endPython
+
+db = note.mongoDB("note")
+
+c = note.Contact(db)
+c.processContact()
+
+if c.contactInfo['NAME']:
+   db.addItem("contacts", c.contactInfo)
+
+endPython
+endfunction
+
+command! -nargs=? NoteContact call NoteContactFunc(<f-args>)
+
+"""""""""""""""""""""""""""""""""""""""""""
+"" New Place
+"""""""""""""""""""""""""""""""""""""""""""
+
+function! NotePlaceFunc()
+
+   let template = "PLACE\n\n\n\nNOTES\n\n\n\nADDRESS\n\n\n\nTAGS\n\n\n"
+
+   split
+   edit ~/.note.TMP
+   execute "normal! ggVGd"
+   execute "normal! i".template
+   execute "normal! 3G"
+   augroup Note
+      autocmd!
+      autocmd BufUnload <buffer> call NoteAddPlace()
+   augroup END  " ends au group NoteAdd
+   startinsert
+
+endfunction
+
+function! NoteAddPlace()
+augroup Note
+   autocmd!
+augroup END
+python << endPython
+
+db = note.mongoDB("note")
+
+p = note.Place(db)
+p.processPlace()
+
+if p.placeText:
+   db.addItem("places", {"noteText": p.noteText,
+                        "placeText": p.placeText,
+                        "addressText": p.addressText,
+                        "tags": p.tags})
+
+endPython
+endfunction
+
+command! -nargs=? NotePlace call NotePlaceFunc(<f-args>)
 
 """""""""""""""""""""""""""""""""""""""""""
 "" Search
