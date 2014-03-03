@@ -302,3 +302,20 @@ endPython
 endfunction
 
 command! -nargs=* NoteSearch call NoteSearchFunc(<f-args>)
+
+"""""""""""""""""""""""""""""""""""""""""""
+"" Delete
+"""""""""""""""""""""""""""""""""""""""""""
+
+function! NoteDeleteFunc(...)
+python << endPython
+
+ID = int(vim.eval("a:1"))
+
+db = note.mongoDB('note')
+db.deleteItem(ID)
+
+endPython
+endfunction
+
+command! -nargs=* NoteDelete call NoteDeleteFunc(<f-args>)
