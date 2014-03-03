@@ -13,33 +13,30 @@ function! NoteNewFunc(...)
    split
 
    if a:0 == 1
-      let ID = a:1
-      call NoteEditNote(ID)
+      let g:NoteID = a:1
+      call NoteEditNote()
       edit ~/.note.TMP
    else
       let template = "NOTE\n\n\n\nTAGS\n\n"
       edit ~/.note.TMP
       execute "normal! ggdG"
       execute "normal! i".template
-      let ID = 0
+      let g:NoteID = 0
    endif
 
    execute "normal! 3G"
    augroup Note
       autocmd!
-      autocmd BufUnload <buffer> call NoteAddNote(ID)
+      autocmd BufUnload <buffer> call NoteAddNote()
    augroup END  " ends au group NoteAdd
    startinsert
 
 endfunction
 
-function! NoteAddNote(ID)
-augroup Note
-   autocmd!
-augroup END
+function! NoteAddNote()
 python << endPython
 
-ID = vim.eval("a:ID")
+ID = int(vim.eval("g:NoteID"))
 if not ID:
    ID = None
 
@@ -52,14 +49,21 @@ if n.noteText:
    db.addItem("notes", {"noteText": n.noteText, "tags": n.tags}, ID)
 
 endPython
+
+augroup Note
+   autocmd!
+augroup END
+
+unlet g:NoteID
+
 endfunction
 
-function! NoteEditNote(ID)
+function! NoteEditNote()
 python << endPython
 db = note.mongoDB("note")
 
 n = note.Note(db)
-n.makeTmpFile(vim.eval("a:ID"))
+n.makeTmpFile(int(vim.eval("g:NoteID")))
 
 endPython
 endfunction
@@ -74,15 +78,15 @@ function! TodoNewFunc(...)
 
    split
    if a:0 == 1
-      let ID = a:1
-      call NoteEditTodo(ID)
+      let g:NoteID = a:1
+      call NoteEditTodo()
       edit ~/.note.TMP
    else
       let template = "TODO\n\n\n\nDONE\n\n\n\nDATE - MM DD YY\n\n\n"
       execute "normal! ggVGd"
       execute "normal! i".template
       edit ~/.note.TMP
-      let ID=0
+      let g:NoteID=0
    endif
 
    execute "normal! 3G"
@@ -95,9 +99,6 @@ function! TodoNewFunc(...)
 endfunction
 
 function! NoteAddToDo()
-augroup Note
-   autocmd!
-augroup END
 python << endPython
 
 db = note.mongoDB("note")
@@ -109,14 +110,20 @@ if todo.todoText:
    db.addItem("todos", {"todoText": todo.todoText, "done": todo.done, "date": todo.date})
 
 endPython
+
+augroup Note
+   autocmd!
+augroup END
+unlet g:NoteID
+
 endfunction
 
-function! NoteEditTodo(ID)
+function! NoteEditTodo()
 python << endPython
 db = note.mongoDB("note")
 
 t = note.ToDo(db)
-t.makeTmpFile(vim.eval("a:ID"))
+t.makeTmpFile(int(vim.eval("g:NoteID")))
 
 endPython
 endfunction
@@ -129,26 +136,37 @@ command! -nargs=? NoteToDo call TodoNewFunc(<f-args>)
 
 function! NoteContactFunc()
 
-   let template = "NAME\n\n\n\nAFFILIATION\n\n\n\nEMAIL\n\n\n\nMOBILE PHONE\n\n\n\nHOME PHONE\n\n\n\nWORK PHONE\n\n\n\nADDRESS\n\n\n"
-
    split
-   edit ~/.note.TMP
-   execute "normal! ggVGd"
-   execute "normal! i".template
+
+   if a:0 == 1
+      let g:NoteID = a:1
+      call NoteEditContact()
+      edit ~/.note.TMP
+   else
+      let template = "NAME\n\n\n\nAFFILIATION\n\n\n\nEMAIL\n\n\n\nMOBILE PHONE\n\n\n\nHOME PHONE\n\n\n\nWORK PHONE\n\n\n\nADDRESS\n\n\n"
+      edit ~/.note.TMP
+      execute "normal! ggdG"
+      execute "normal! i".template
+      let g:NoteID = 0
+   end
+
    execute "normal! 3G"
+   
    augroup Note
       autocmd!
       autocmd BufUnload <buffer> call NoteAddContact()
    augroup END  " ends au group NoteAdd
+
    startinsert
 
 endfunction
 
 function! NoteAddContact()
-augroup Note
-   autocmd!
-augroup END
 python << endPython
+
+ID = int(vim.eval("g:NoteID"))
+if not ID:
+   ID = None
 
 db = note.mongoDB("note")
 
@@ -156,12 +174,29 @@ c = note.Contact(db)
 c.processContact()
 
 if c.contactInfo['NAME']:
-   db.addItem("contacts", c.contactInfo)
+   db.addItem("contacts", c.contactInfo, ID)
+
+endPython
+
+unlet g:NoteID
+augroup Note
+   autocmd!
+augroup END
+
+endfunction
+
+function! NoteEditContact()
+python << endPython
+db = note.mongoDB("note")
+
+n = note.Note(db)
+n.makeTmpFile(int(vim.eval("g:NoteID")))
 
 endPython
 endfunction
 
 command! -nargs=? NoteContact call NoteContactFunc(<f-args>)
+
 
 """""""""""""""""""""""""""""""""""""""""""
 "" New Place
@@ -169,12 +204,19 @@ command! -nargs=? NoteContact call NoteContactFunc(<f-args>)
 
 function! NotePlaceFunc()
 
-   let template = "PLACE\n\n\n\nNOTES\n\n\n\nADDRESS\n\n\n\nTAGS\n\n\n"
-
    split
-   edit ~/.note.TMP
-   execute "normal! ggVGd"
-   execute "normal! i".template
+
+   if a:0 == 1
+      let g:NoteID = a:1
+      call NoteEditPlace()
+      edit ~/.note.TMP
+   else
+      edit ~/.note.TMP
+      let template = "PLACE\n\n\n\nNOTES\n\n\n\nADDRESS\n\n\n\nTAGS\n\n\n"
+      execute "normal! ggdG"
+      execute "normal! i".template
+   endif
+
    execute "normal! 3G"
    augroup Note
       autocmd!
@@ -185,10 +227,11 @@ function! NotePlaceFunc()
 endfunction
 
 function! NoteAddPlace()
-augroup Note
-   autocmd!
-augroup END
 python << endPython
+
+ID = int(vim.eval("g:NoteID"))
+if not ID:
+   ID = None
 
 db = note.mongoDB("note")
 
@@ -199,10 +242,28 @@ if p.placeText:
    db.addItem("places", {"noteText": p.noteText,
                         "placeText": p.placeText,
                         "addressText": p.addressText,
-                        "tags": p.tags})
+                        "tags": p.tags}, ID)
+
+endPython
+
+augroup Note
+   autocmd!
+augroup END
+
+unlet g:NoteID
+
+endfunction
+
+function! NoteEditPlace()
+python << endPython
+db = note.mongoDB("note")
+
+n = note.Note(db)
+n.makeTmpFile(int(vim.eval("g:NoteID")))
 
 endPython
 endfunction
+
 
 command! -nargs=? NotePlace call NotePlaceFunc(<f-args>)
 
